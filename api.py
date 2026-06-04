@@ -1,21 +1,9 @@
 from fastapi import FastAPI
+import database
+from database import PersistenciaException
 
 # Create a FastAPI instance
 app = FastAPI()     
-
-# List to store the history of races
-historial_carreras = []
-
-# List to store the data of the pilots, which can be expanded in the future to include more details about the pilots
-pilotos = []
-
-# Variable to store the data of the last race
-ultima_carrera = {
-    "RT": 0.0,
-    "60FT": 0.0,
-    "ET": 0.0,
-    "MPH": 0.0
-}
 
 # Welcome endpoint to verify that the API is running
 @app.get("/")
@@ -25,44 +13,47 @@ def inicio():
 # Endpoint to get the data of the last race
 @app.get("/carrera")
 def obtener_carrera():
-    return ultima_carrera
+    try: 
+        return database.obtener_carrera()
+    except PersistenciaException as e:
+        return {"error": str(e)}
 
 # Endpoint to post the data of a new race
 @app.post("/carrera")
 def guardar_carrera(carrera: dict):
-    historial_carreras.append(carrera) 
-    return {"message": "Carrera guardada", "total_carreras": len(historial_carreras)}
+    try:
+        return database.guardar_carrera(carrera)
+    except PersistenciaException as e:
+        return {"error": str(e)}
 
 # Endpoint to get the history of all races
 @app.get("/carreras")
 def obtener_historial():
-    return historial_carreras
+    try:
+        return database.obtener_historial()
+    except PersistenciaException as e:
+        return {"error": str(e)}
 
 # Endpoint to get the list of pilots
 @app.get("/pilotos")
 def obtener_pilotos():
-    if not pilotos:
-        return {"message": " No hay pilotos registrados"}
-    return pilotos
+    try:
+        return database.obtener_pilotos()
+    except PersistenciaException as e:
+        return {"error": str(e)}
 
 # Enpoint to post a new pilot 
 @app.post("/piloto")
 def guardar_piloto(piloto: dict):
-    pilotos.append(piloto)
-    return {"message": "piloto guardado", "total_pilotos": len(pilotos)}
+    try:
+        return database.guardar_piloto(piloto)
+    except PersistenciaException as e:
+        return {"error": str(e)}
 
-# Endpoint to get a especific pilot by index
-@app.get("/piloto/{index}")
-def obtener_piloto(index: int):
-    # Validates the index avoiding to search a pilot that doesnt exist in the list
-    if index < 0 or index >= len(pilotos):
-        return {"message": "Piloto no encontrado"}
-    return pilotos[index]
-
-# Endpoint to delete a specific pilot by index
-@app.delete("/piloto/{index}")
-def eliminar_piloto(index: int):
-    if index < 0 or index >= len(pilotos):
-        return {"message": "Piloto no encontrado"}
-    pilotos.pop(index)
-    return {"message": "Piloto eliminado", "total_pilotos": len(pilotos)}
+# Endpoint to delete a pilot
+@app.delete("/piloto/{id}")
+def eliminar_piloto(id: str):
+    try:
+        return database.eliminar_piloto(id)
+    except PersistenciaException as e:
+        return {"error": str(e)}

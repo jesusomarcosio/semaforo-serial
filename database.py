@@ -1,24 +1,28 @@
-from pymongo import MongoClient # Import the MongoClient class from the pymongo library
-from bson import ObjectId # Import ObjectId to convert a String to ObjectId
+from pymongo import MongoClient 
+from bson import ObjectId 
 from pymongo import DESCENDING
-from pymongo.errors import PyMongoError # Import PyMongoError to handle mongo erros
+from pymongo.errors import PyMongoError 
+
+# Persistence error exception
+class PersistenciaException(Exception):
+    pass
 
 cliente = MongoClient("mongodb://localhost:27017") # Create a MongoClient instance 
 
 db = cliente["semaforo"] # Create or acces a database named "semaforo", is already created in prueba_mongo.py
 
-CARRERAS = db.get_collection("carreras") # Get the "carreras" collection from the "semaforo" database
-PILOTOS = db.get_collection("pilotos") # Get the "pilotos" collection from the "semaforo" database
+CARRERAS = db.get_collection("carreras") 
+PILOTOS = db.get_collection("pilotos") 
 
 # Posts a new race, this method is called in the Endpoint guardar_carrera in api.py
 def guardar_carrera(carrera: dict):
     try:
-        resultado = CARRERAS.insert_one(carrera) # Insert the carrera document into the carreras collection
+        resultado = CARRERAS.insert_one(carrera) 
 
         if not resultado.acknowledged:
-            raise PersistenciaException("Error al guardar la carrera")
+            raise PersistenciaException(f"Error al guardar la carrera: {e}")
         
-        return {f"Carrera guardada correctamente: {resultado.inserted_id}"}# Return the ID of the inserted document
+        return {"message": f"Carrera guardada correctamente: {resultado.inserted_id}"}
     except PyMongoError as e:
         raise PersistenciaException(f"Error al guardar la carrera: {e}")
     
@@ -30,7 +34,7 @@ def obtener_carrera():
         if resultado is None:
             return {"message": "No hay carreras registradas"}
         
-        resultado["_id"] = str(resultado["_id"]) # ObjectId to String
+        resultado["_id"] = str(resultado["_id"]) 
 
         return resultado
     
@@ -56,7 +60,7 @@ def obtener_pilotos():
         lista_pilotos = list(PILOTOS.find())
 
         if len(lista_pilotos) == 0:
-            raise PersistenciaException("No hay pilotos registrados")
+            return {"message": "No hay pilotos registrados"}
         
         for piloto in lista_pilotos:
             piloto["_id"] = str(piloto["_id"])
@@ -71,25 +75,24 @@ def guardar_piloto(piloto: dict):
     try:
         resultado = PILOTOS.insert_one(piloto)
 
-        if not resultado.acknowledged:
-            raise PyMongoError("Error al guardar el piloto")
+        if not resultado.acknowledged:                                       
+            raise PersistenciaException("No se confirmo la insercion del piloto")
         
-        return {f"Piloto guardado correctamente: {resultado.inserted_id}"}
+        return {"message": f"Piloto guardado correctamente: {resultado.inserted_id}"}
     
     except PyMongoError as e:
         raise PersistenciaException(f"Error al guardar el piloto: {e}")
 
 # Deletes an especific pilot by id
 def eliminar_piloto(id: str):
-    id_piloto = ObjectId(id)
+    try:
+        id_piloto = ObjectId(id)
 
-    resultado = PILOTOS.delete_one({"_id": id_piloto})
+        resultado = PILOTOS.delete_one({"_id": id_piloto})
 
-    if resultado.deleted_count == 0:
-        raise PersistenciaException("Piloto no encontrado")
-    
-    return {"message": f"Piloto eliminado correctamente: {id_piloto}"}
-
-# Persistence error exception
-class PersistenciaException(Exception):
-    pass
+        if resultado.deleted_count == 0:
+            return {"message": f"Piloto no encontrado: {id_piloto}"}
+        
+        return {"message": f"Piloto eliminado correctamente: {id_piloto}"}
+    except PyMongoError as e:
+        raise PersistenciaException(f"Error al eliminar el piloto: {e}")
